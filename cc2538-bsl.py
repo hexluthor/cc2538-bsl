@@ -65,6 +65,8 @@ def mdebug(level, message, attr='\n'):
 
 # Takes chip IDs (obtained via Get ID command) to human-readable names
 CHIP_ID_STRS = {0xb964: 'CC2538'}
+CHIP_FLASH_STRS = {0x1: '128', 0x2:'256' ,0x4:'512'}
+CHIP_SRAM_STRS = {0x0: '16', 0x4: '32'}
 
 RETURN_CMD_STRS =  {0x40: 'Success',
                     0x41: 'Unknown command',
@@ -80,6 +82,10 @@ COMMAND_RET_INVALID_ADR = 0x43
 COMMAND_RET_FLASH_FAIL = 0x44
 
 ADDR_IEEE_ADDRESS_SECONDARY = 0x0027ffcc
+FLASH_CTRL_DIECFG0  = 0x400D3014
+FLASH_SIZE_MASK     = 0x70
+SRAM_SIZE_MASK      = 0x380
+
 
 class CmdException(Exception):
     pass
@@ -379,6 +385,27 @@ class CommandInterface(object):
 
 
 # Complex commands section
+    def getChipModel(self):
+        model = self.cmdMemRead(FLASH_CTRL_DIECFG0); #returns 4 bytes
+        assert len(model) == 4, "Unreasonable chip model: %s" % repr(chip_id)
+
+        chip_id_num = (ord(model[0]) << 8) | ord(model[1])
+        chip_flash_num = ((ord(model[3])&FLASH_SIZE_MASK)>>4)
+        chip_sram_num = ((((ord(model[2])<<8)|ord(model[3]))&SRAM_SIZE_MASK)>>7)
+        chip_id_str = CHIP_ID_STRS.get(chip_id_num, None)
+        chip_flash_str = CHIP_FLASH_STRS.get(chip_flash_num, None)
+        chip_sram_str = CHIP_SRAM_STRS.get(chip_sram_num, None)
+
+        if chip_id_str is None:
+            mdebug(0, 'Warning: unrecognized chip ID 0x%x' % chip_id_num)
+        else:
+            mdebug(5, "    Target id: %s, flash: %s KB, SRAM: %s KB"\
+             % (chip_id_str, chip_flash_str, chip_sram_str))
+
+        self.flash_size = chip_flash_num
+
+        return 1
+
 
     def writeMemory(self, addr, data):
         lng = len(data)
@@ -622,15 +649,7 @@ if __name__ == "__main__":
         # if (cmd.cmdPing() != 1):
         #     raise CmdException("Can't connect to target. Ensure boot loader is started. (no answer on ping command)")
 
-        chip_id = cmd.cmdGetChipId()
-        assert len(chip_id) == 4, "Unreasonable chip id: %s" % repr(chip_id)
-        chip_id_num = (ord(chip_id[2]) << 8) | ord(chip_id[3])
-        chip_id_str = CHIP_ID_STRS.get(chip_id_num, None)
-
-        if chip_id_str is None:
-            mdebug(0, 'Warning: unrecognized chip ID 0x%x' % chip_id_num)
-        else:
-            mdebug(5, "    Target id 0x%x, %s" % (chip_id_num, chip_id_str))
+        cmd.getChipModel()
 
         if conf['erase']:
             # we only do full erase for now (CC2538)
