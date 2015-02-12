@@ -389,16 +389,6 @@ class CommandInterface(object):
         trsf_size = 248 #amount of data bytes transferred per packet (theory: max 252 + 3)
         empty_packet = [255]*trsf_size #empty packet (filled with 0xFF)
 
-        # Boot loader enable check
-        # TODO: implement check for all chip sizes & take into account partial firmware uploads
-        if (lng == 524288): #check if file is for 512K model
-            if not ((data[524247] & (1 << 4)) >> 4): #check the boot loader enable bit  (only for 512K model)
-                if not query_yes_no("The boot loader backdoor is not enabled "\
-                    "in the firmware you are about to write to the target. "\
-                    "You will NOT be able to reprogram the target using this tool if you continue! "\
-                    "Do you want to continue?","no"):
-                    raise Exception('Aborted by user.')
-
         mdebug(5, "Writing %(lng)d bytes starting at address 0x%(addr)X" %
                { 'lng': lng, 'addr': addr})
 
