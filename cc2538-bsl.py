@@ -643,9 +643,8 @@ if __name__ == "__main__":
             mdebug(5, "    Target id 0x%x, %s" % (chip_id_num, chip_id_str))
 
         if conf['erase']:
-            # we only do full erase for now (CC2538)
-            address = 0x00200000 #flash start addr for cc2538
-            size = 0x80000 #total flash size cc2538
+            address = conf['address']
+            size = conf['len']
             mdebug(5, "Erasing %s bytes starting at address 0x%x" % (size, address))
 
             if cmd.cmdEraseMemory(address, size):
